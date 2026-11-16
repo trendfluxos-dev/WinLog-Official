@@ -19,5 +19,8 @@
             <intent-filter><action android:name="android.intent.action.PHONE_STATE" /><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
         </receiver>
         <service android:name="androidx.work.impl.foreground.SystemForegroundService" android:foregroundServiceType="dataSync" tools:node="merge" />
+        <service android:name=".WhatsAppNotificationService" android:label="WinLog WhatsApp signals" android:exported="true" android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter><action android:name="android.service.notification.NotificationListenerService" /></intent-filter>
+        </service>
     </application>
 </manifest>

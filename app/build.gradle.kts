@@ -10,8 +10,8 @@ android {
         applicationId = "com.winstone.callcollector"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.3.1"
+        versionCode = 6
+        versionName = "1.4.0"
         buildConfigField("String", "DEVICE_API_KEY", "\"${deviceApiKey.replace("\\", "\\\\").replace("\"", "\\\"")}\"")
     }
     buildTypes { release { isMinifyEnabled = false } }
