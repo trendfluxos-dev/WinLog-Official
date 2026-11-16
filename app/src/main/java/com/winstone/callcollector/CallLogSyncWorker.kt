@@ -28,7 +28,7 @@ object CollectorPrefs {
  private const val KEY_LAST_SYNC_AT="last_sync_at_ms"
  private const val KEY_LAST_SYNC_STATUS="last_sync_status"
  private const val KEY_SYNC_DIAGNOSTICS="sync_diagnostics"
- const val DEFAULT_INGEST_URL="https://winlogofficial.winstonebd.com/api/public/ingest-call-logs"
+ const val DEFAULT_INGEST_URL=PhoneSetupValidator.RECEIVER
  val DEVICE_API_KEY:String=BuildConfig.DEVICE_API_KEY
  private fun prefs(context:Context)=context.getSharedPreferences(PREFS_NAME,Context.MODE_PRIVATE)
  fun getEmployeeId(context:Context):String=prefs(context).getString(KEY_EMPLOYEE_ID,"") ?: ""
@@ -61,6 +61,11 @@ class CallLogSyncWorker(appContext:Context,workerParams:WorkerParameters):Corout
   if(employeeId.isBlank() || endpointUrl.isBlank() || CollectorPrefs.DEVICE_API_KEY.isBlank()) {
    CollectorPrefs.setSyncOutcome(applicationContext,"Set Employee ID and reinstall the configured WinLog app")
    return@withContext Result.success()
+  }
+  try { PhoneSetupValidator.validate(employeeId,endpointUrl) }
+  catch(_:IllegalArgumentException) {
+   CollectorPrefs.setSyncOutcome(applicationContext,"Set Employee ID and use the official WinLog receiver")
+   return@withContext Result.failure()
   }
   val hasPermission=ContextCompat.checkSelfPermission(applicationContext,Manifest.permission.READ_CALL_LOG)==PackageManager.PERMISSION_GRANTED
   if(!hasPermission) { CollectorPrefs.setSyncOutcome(applicationContext,"Missing READ_CALL_LOG permission"); return@withContext Result.failure() }
@@ -109,6 +114,7 @@ class CallLogSyncWorker(appContext:Context,workerParams:WorkerParameters):Corout
  private fun postToWinLog(endpointUrl:String,jsonBody:String):Int {
   val connection=(URL(endpointUrl).openConnection() as HttpURLConnection).apply {
    requestMethod="POST"; connectTimeout=15000; readTimeout=15000; doOutput=true
+   instanceFollowRedirects=false
    setRequestProperty("Content-Type","application/json"); setRequestProperty("x-device-api-key",CollectorPrefs.DEVICE_API_KEY)
   }
   return try { OutputStreamWriter(connection.outputStream,Charsets.UTF_8).use { it.write(jsonBody); it.flush() }; connection.responseCode }

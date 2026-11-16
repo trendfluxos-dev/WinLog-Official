@@ -21,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.journeyapps.barcodescanner.ScanContract
 import com.journeyapps.barcodescanner.ScanOptions
 import org.json.JSONObject
@@ -46,6 +48,20 @@ fun CollectorStatusScreen() {
  var permitted by remember { mutableStateOf(checkRequiredPermissions(context)) }
  var unrestricted by remember { mutableStateOf(isIgnoringBatteryOptimizations(context)) }
  var pendingReport by remember { mutableStateOf<String?>(null) }
+ val lifecycleOwner=androidx.compose.ui.platform.LocalLifecycleOwner.current
+ DisposableEffect(lifecycleOwner) {
+  val observer=LifecycleEventObserver { _, event ->
+   if(event==Lifecycle.Event.ON_RESUME) {
+    permitted=checkRequiredPermissions(context)
+    unrestricted=isIgnoringBatteryOptimizations(context)
+    bound=CollectorPrefs.getEmployeeId(context)
+    status=CollectorPrefs.getLastSyncStatus(context)
+    lastSync=CollectorPrefs.getLastSyncAtMs(context)
+   }
+  }
+  lifecycleOwner.lifecycle.addObserver(observer)
+  onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+ }
  val exportLauncher=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
   val report=pendingReport
   if(uri!=null && report!=null) {
@@ -64,14 +80,8 @@ fun CollectorStatusScreen() {
  val qrLauncher=rememberLauncherForActivityResult(ScanContract()) { result ->
   if(result.contents!=null) {
    try {
-    val setup=JSONObject(result.contents)
-    val id=setup.getString("employee_id")
-    val url=setup.getString("ingest_url")
-    require(setup.keys().asSequence().toSet()==setOf("type","version","employee_id","ingest_url"))
-    require(setup.getString("type")=="winlog-phone-setup" && setup.getInt("version")==1)
-    require(id.length in 1..64 && id.matches(Regex("^[A-Z0-9_-]+$")))
-    require(url==CollectorPrefs.DEFAULT_INGEST_URL)
-    employee=id; receiver=url
+    val setup=PhoneSetupValidator.parseQr(result.contents)
+    employee=setup.employeeId; receiver=setup.receiver
     status="QR ready — tap Bind Device & Sync Now to confirm"
    } catch(_:Exception) { status="Invalid WinLog setup QR" }
   }
@@ -90,13 +100,14 @@ fun CollectorStatusScreen() {
   OutlinedTextField(value=employee,onValueChange={ employee=it.uppercase() },label={ Text("Employee ID (e.g. WIN2604)") },singleLine=true,modifier=Modifier.fillMaxWidth())
   OutlinedTextField(value=receiver,onValueChange={ receiver=it.trim() },label={ Text("WinLog receiver address") },singleLine=true,modifier=Modifier.fillMaxWidth())
   Button(onClick={
-   val id=employee.trim().uppercase()
-   if(id.isNotBlank() && receiver.isNotBlank()) {
-    CollectorPrefs.setEmployeeId(context,id); CollectorPrefs.setEndpointUrl(context,receiver.trim()); bound=id
+   try {
+    val setup=PhoneSetupValidator.validate(employee,receiver)
+    CollectorPrefs.setEmployeeId(context,setup.employeeId); CollectorPrefs.setEndpointUrl(context,setup.receiver); bound=setup.employeeId
+    permitted=checkRequiredPermissions(context)
     CallLogSyncWorker.schedulePeriodicSync(context)
     if(permitted) { CallLogSyncWorker.enqueueImmediateSync(context,1L); status="Sync queued..." }
     else status="Bound locally — grant call permissions to sync"
-   }
+   } catch(_:IllegalArgumentException) { status="Setup refused — use a valid employee ID and the official WinLog receiver" }
   },modifier=Modifier.fillMaxWidth()) { Text("Bind Device & Sync Now") }
   if(!permitted) OutlinedButton(onClick={
    val permissions=mutableListOf(Manifest.permission.READ_CALL_LOG,Manifest.permission.READ_PHONE_STATE)
