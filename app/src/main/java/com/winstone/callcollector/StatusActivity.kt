@@ -85,6 +85,7 @@ fun CollectorStatusScreen() {
   StatusRow("Battery Mode",if(unrestricted) "Unrestricted" else "Optimized (Fix)")
   StatusRow("Last Sync",if(lastSync>0) SimpleDateFormat("dd MMM, hh:mm a",Locale.getDefault()).format(Date(lastSync)) else "Never")
   StatusRow("Sync Result",status)
+  PhoneHealthPanel(context)
   OutlinedButton(onClick={ qrLauncher.launch(ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE).setPrompt("Scan the QR from WinLog Phone setup").setBeepEnabled(false).setOrientationLocked(false)) },modifier=Modifier.fillMaxWidth()) { Text("Scan Setup QR") }
   OutlinedTextField(value=employee,onValueChange={ employee=it.uppercase() },label={ Text("Employee ID (e.g. WIN2604)") },singleLine=true,modifier=Modifier.fillMaxWidth())
   OutlinedTextField(value=receiver,onValueChange={ receiver=it.trim() },label={ Text("WinLog receiver address") },singleLine=true,modifier=Modifier.fillMaxWidth())
