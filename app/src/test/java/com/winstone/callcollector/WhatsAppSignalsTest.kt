@@ -19,7 +19,10 @@ class WhatsAppSignalsTest {
  @Test fun removalIsNotVerifiedCallDuration() {
   val tracker = WhatsAppSignalTracker(); tracker.posted("k", 100); tracker.removed("k", 300)
   assertEquals(listOf(WhatsAppSignal(100, 300)), tracker.snapshot())
-  assertEquals(setOf("observedAtMs", "removedAtMs"), WhatsAppSignal::class.java.declaredFields.filter { !it.isSynthetic }.map { it.name }.toSet())
+  val storedFields = WhatsAppSignal::class.java.declaredFields.filter {
+   !java.lang.reflect.Modifier.isStatic(it.modifiers) && !it.isSynthetic
+  }.map { it.name }.toSet()
+  assertEquals(setOf("observedAtMs", "removedAtMs"), storedFields)
  }
  @Test fun historyIsBoundedAndClearErasesEverything() {
   val tracker = WhatsAppSignalTracker(); (1..25).forEach { tracker.posted("$it", it.toLong()) }
