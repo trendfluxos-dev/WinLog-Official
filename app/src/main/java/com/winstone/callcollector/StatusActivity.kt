@@ -128,6 +128,8 @@ fun CollectorStatusScreen() {
    ),System.currentTimeMillis())
    exportLauncher.launch("winlog-diagnostics.json")
   },modifier=Modifier.fillMaxWidth()) { Text("Export Privacy-safe Diagnostics") }
+  HorizontalDivider()
+  Text("Developed & Powered by Zahid Hasan Emon.",style=MaterialTheme.typography.bodySmall,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.fillMaxWidth())
  }
 }
 @Composable
