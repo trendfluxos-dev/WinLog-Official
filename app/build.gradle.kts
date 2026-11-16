@@ -3,7 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val deviceApiKey = providers.environmentVariable("DEVICE_API_KEY").orElse("")
+val deviceApiKey = providers.environmentVariable("DEVICE_API_KEY").getOrElse("")
 
 android {
     namespace = "com.winstone.callcollector"
